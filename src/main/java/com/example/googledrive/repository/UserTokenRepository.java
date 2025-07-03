@@ -1,0 +1,14 @@
+package com.example.googledrive.repository;
+
+import com.example.googledrive.model.User;
+import com.example.googledrive.model.UserToken;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserTokenRepository extends JpaRepository<UserToken, Long> {
+    Optional<UserToken> findByUser(User user);
+    Optional<UserToken> findByUserId(Long userId);
+}
