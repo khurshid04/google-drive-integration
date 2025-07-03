@@ -54,6 +54,17 @@ class DriveService {
     }
 
     async openPicker() {
+        console.log('Opening picker - Authentication status:', {
+            isAuthenticated: this.authService.isAuthenticated(),
+            isConnected: this.authService.isConnected(),
+            currentUser: this.authService.getCurrentUser(),
+            accessToken: this.authService.getAccessToken() ? 'present' : 'missing'
+        });
+        
+        if (!this.authService.isAuthenticated()) {
+            throw new Error('User is not authenticated');
+        }
+        
         if (!this.authService.isConnected()) {
             throw new Error('User is not connected to Google Drive');
         }

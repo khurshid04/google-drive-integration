@@ -90,11 +90,17 @@ class App {
             // Automatically open Google Picker after successful authentication
             setTimeout(async () => {
                 try {
+                    // Refresh auth status to ensure connection is properly established
+                    await this.authService.checkAuthStatus();
+                    await this.updateUI();
+                    
+                    // Now try to open the picker
                     await this.openGooglePicker();
                 } catch (error) {
                     console.error('Failed to open picker after authentication:', error);
+                    this.showError('Please try clicking "Select Files from Drive" button manually.');
                 }
-            }, 1000); // Small delay to ensure UI updates are complete
+            }, 2000); // Increased delay to ensure authentication is fully processed
             
         } catch (error) {
             console.error('Failed to connect to Google Drive:', error);
@@ -118,6 +124,17 @@ class App {
     async openGooglePicker() {
         try {
             this.showLoading(true);
+            
+            // Check if user is authenticated and connected
+            if (!this.authService.isAuthenticated()) {
+                throw new Error('User is not authenticated');
+            }
+            
+            // If not connected, try to refresh authentication status first
+            if (!this.authService.isConnected()) {
+                await this.authService.checkAuthStatus();
+                await this.updateUI();
+            }
             
             const files = await this.driveService.openPicker();
             
