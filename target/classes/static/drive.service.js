@@ -77,24 +77,31 @@ class DriveService {
         
         return new Promise((resolve, reject) => {
             // Create different views for comprehensive file access
-            const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+            // My Drive view - user's own files
+            const myDriveView = new google.picker.DocsView(google.picker.ViewId.DOCS)
                 .setIncludeFolders(true)
-                .setSelectFolderEnabled(true);
+                .setSelectFolderEnabled(true)
+                .setOwnedByMe(true);
             
+            // Shared with me view - files shared with the user (no folders due to API limitation)
+            const sharedView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+                .setOwnedByMe(false);
+            
+            // Folders view for easier navigation
             const foldersView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
                 .setIncludeFolders(true)
                 .setSelectFolderEnabled(true)
                 .setMimeTypes('application/vnd.google-apps.folder');
             
-            const sharedView = new google.picker.DocsView()
-                .setIncludeFolders(true)
-                .setSelectFolderEnabled(true)
-                .setOwnedByMe(false);
+            // Recent files view
+            const recentView = new google.picker.DocsView(google.picker.ViewId.RECENTLY_PICKED)
+                .setIncludeFolders(true);
             
             const picker = new google.picker.PickerBuilder()
                 .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-                .addView(docsView)
+                .addView(myDriveView)
                 .addView(sharedView)
+                .addView(recentView)
                 .addView(foldersView)
                 .setOAuthToken(accessToken)
                 .setDeveloperKey(this.googleApiKey)
