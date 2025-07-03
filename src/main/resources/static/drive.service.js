@@ -76,8 +76,26 @@ class DriveService {
         const accessToken = this.authService.getAccessToken();
         
         return new Promise((resolve, reject) => {
+            // Create different views for comprehensive file access
+            const docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+                .setIncludeFolders(true)
+                .setSelectFolderEnabled(true);
+            
+            const foldersView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+                .setIncludeFolders(true)
+                .setSelectFolderEnabled(true)
+                .setMimeTypes('application/vnd.google-apps.folder');
+            
+            const sharedView = new google.picker.DocsView()
+                .setIncludeFolders(true)
+                .setSelectFolderEnabled(true)
+                .setOwnedByMe(false);
+            
             const picker = new google.picker.PickerBuilder()
-                .addView(google.picker.ViewId.DOCS)
+                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                .addView(docsView)
+                .addView(sharedView)
+                .addView(foldersView)
                 .setOAuthToken(accessToken)
                 .setDeveloperKey(this.googleApiKey)
                 .setCallback((data) => {

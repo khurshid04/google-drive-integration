@@ -107,6 +107,9 @@ Preferred communication style: Simple, everyday language.
 - ✅ **NEW:** Smart consent handling - returning users skip repeated auth screens
 - ✅ **NEW:** Automatic file saving to database when selected via Picker
 - ✅ **NEW:** Improved user workflow with seamless file selection process
+- ✅ **NEW:** Enhanced Google Picker with multiple views (My Drive, Shared, Folders)
+- ✅ **NEW:** Full folder navigation and shared file access in picker
+- ✅ **NEW:** Multi-select capability for choosing multiple files at once
 
 ### Key Features Implemented
 1. **OAuth2 Flow**: Complete server-side Google authentication with popup handling
