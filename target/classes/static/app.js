@@ -116,6 +116,11 @@ class App {
     }
 
     async loadFiles() {
+        // Only load files if user is authenticated and connected
+        if (!this.authService.isAuthenticated() || !this.authService.isConnected()) {
+            return;
+        }
+        
         try {
             const files = await this.driveService.getUserFiles();
             this.currentFiles = files;
@@ -127,6 +132,11 @@ class App {
     }
 
     async loadSavedFiles() {
+        // Only load saved files if user is authenticated
+        if (!this.authService.isAuthenticated()) {
+            return;
+        }
+        
         try {
             const files = await this.driveService.getSavedFiles();
             this.savedFiles = files;
