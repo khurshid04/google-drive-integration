@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 @RestController
 @RequestMapping("/oauth2")
@@ -70,26 +72,38 @@ public class OAuth2Controller {
             String refreshToken = tokenResponse.getRefreshToken();
             Long expiresIn = tokenResponse.getExpiresInSeconds();
 
-            // Get user info from Google using the credential
-            Credential credential = googleAuthFlow.createAndStoreCredential(tokenResponse, "user");
+            // Get user info from Google using direct HTTP request
+            String userInfoUrl = "https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + accessToken;
             
-            Oauth2 oauth2 = new Oauth2.Builder(
-                googleAuthFlow.getTransport(),
-                googleAuthFlow.getJsonFactory(),
-                credential
-            ).setApplicationName("Google Drive Integration").build();
-
-            Userinfo userinfo = oauth2.userinfo().get().execute();
+            java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(userInfoUrl))
+                .build();
+            
+            java.net.http.HttpResponse<String> response = client.send(request, 
+                java.net.http.HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to get user info: " + response.body());
+            }
+            
+            // Parse JSON response manually
+            String responseBody = response.body();
+            com.google.gson.JsonObject jsonObject = com.google.gson.JsonParser.parseString(responseBody).getAsJsonObject();
+            
+            String userId = jsonObject.get("id").getAsString();
+            String email = jsonObject.get("email").getAsString();
+            String name = jsonObject.get("name").getAsString();
 
             // Save or update user
             User user;
-            Optional<User> existingUser = userRepository.findByGoogleUserId(userinfo.getId());
+            Optional<User> existingUser = userRepository.findByGoogleUserId(userId);
             if (existingUser.isPresent()) {
                 user = existingUser.get();
-                user.setEmail(userinfo.getEmail());
-                user.setName(userinfo.getName());
+                user.setEmail(email);
+                user.setName(name);
             } else {
-                user = new User(userinfo.getEmail(), userinfo.getName(), userinfo.getId());
+                user = new User(email, name, userId);
             }
             user = userRepository.save(user);
 

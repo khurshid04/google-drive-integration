@@ -7,6 +7,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.oauth2.Oauth2Scopes;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -61,7 +62,11 @@ public class GoogleOAuth2Config {
                 httpTransport, 
                 jsonFactory, 
                 clientSecrets,
-                Arrays.asList(DriveScopes.DRIVE_READONLY, DriveScopes.DRIVE_FILE))
+                Arrays.asList(
+                    DriveScopes.DRIVE_READONLY, 
+                    DriveScopes.DRIVE_FILE,
+                    Oauth2Scopes.USERINFO_EMAIL,
+                    Oauth2Scopes.USERINFO_PROFILE))
                 .setAccessType("offline")
                 .setApprovalPrompt("force")
                 .build();
