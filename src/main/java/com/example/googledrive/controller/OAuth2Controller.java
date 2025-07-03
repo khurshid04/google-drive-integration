@@ -4,6 +4,7 @@ import com.example.googledrive.config.GoogleOAuth2Config;
 import com.example.googledrive.model.User;
 import com.example.googledrive.repository.UserRepository;
 import com.example.googledrive.service.TokenService;
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.services.oauth2.Oauth2;
@@ -69,17 +70,16 @@ public class OAuth2Controller {
             String refreshToken = tokenResponse.getRefreshToken();
             Long expiresIn = tokenResponse.getExpiresInSeconds();
 
-            // Get user info from Google
+            // Get user info from Google using the credential
+            Credential credential = googleAuthFlow.createAndStoreCredential(tokenResponse, "user");
+            
             Oauth2 oauth2 = new Oauth2.Builder(
                 googleAuthFlow.getTransport(),
                 googleAuthFlow.getJsonFactory(),
-                request -> {
-                    request.getHeaders().setAuthorization("Bearer " + accessToken);
-                }
+                credential
             ).setApplicationName("Google Drive Integration").build();
 
-            Userinfo userinfo = oauth2.userinfo().get()
-                .execute();
+            Userinfo userinfo = oauth2.userinfo().get().execute();
 
             // Save or update user
             User user;
