@@ -94,7 +94,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### July 3, 2025 - Complete Implementation
+### July 3, 2025 - Complete Implementation with Enhanced User Experience
 - ✅ Spring Boot backend with full OAuth2 Google authentication
 - ✅ PostgreSQL database models for users, tokens, and drive files 
 - ✅ Complete REST API endpoints for Drive operations
@@ -103,6 +103,10 @@ Preferred communication style: Simple, everyday language.
 - ✅ File browsing, saving, and downloading functionality
 - ✅ Token refresh handling for long-lived access
 - ✅ Responsive Bootstrap UI with clean design
+- ✅ **NEW:** Automatic Google Picker launch after authentication
+- ✅ **NEW:** Smart consent handling - returning users skip repeated auth screens
+- ✅ **NEW:** Automatic file saving to database when selected via Picker
+- ✅ **NEW:** Improved user workflow with seamless file selection process
 
 ### Key Features Implemented
 1. **OAuth2 Flow**: Complete server-side Google authentication with popup handling

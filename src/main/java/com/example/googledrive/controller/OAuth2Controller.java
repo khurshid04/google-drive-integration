@@ -44,7 +44,7 @@ public class OAuth2Controller {
         String authorizationUrl = googleAuthFlow.newAuthorizationUrl()
             .setRedirectUri(googleConfig.getRedirectUri())
             .setAccessType("offline")
-            .setApprovalPrompt("force")
+            .setApprovalPrompt("auto")
             .build();
 
         Map<String, String> response = new HashMap<>();

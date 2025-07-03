@@ -74,10 +74,28 @@ class App {
         try {
             this.showLoading(true);
             
+            // Check if user is already authenticated
+            if (this.authService.isAuthenticated() && this.authService.isConnected()) {
+                // User is already logged in, directly open Google Picker
+                await this.openGooglePicker();
+                return;
+            }
+            
+            // Start OAuth flow for new users
             await this.authService.startOAuthFlow();
             await this.updateUI();
             
             this.showSuccess('Successfully connected to Google Drive!');
+            
+            // Automatically open Google Picker after successful authentication
+            setTimeout(async () => {
+                try {
+                    await this.openGooglePicker();
+                } catch (error) {
+                    console.error('Failed to open picker after authentication:', error);
+                }
+            }, 1000); // Small delay to ensure UI updates are complete
+            
         } catch (error) {
             console.error('Failed to connect to Google Drive:', error);
             this.showError('Failed to connect to Google Drive. Please try again.');
@@ -104,8 +122,35 @@ class App {
             const files = await this.driveService.openPicker();
             
             if (files && files.length > 0) {
-                this.showSuccess(`Selected ${files.length} file(s)`);
-                await this.loadFiles(); // Refresh the files list
+                // Save each selected file to the database
+                let savedCount = 0;
+                for (const file of files) {
+                    try {
+                        const fileMetadata = {
+                            googleFileId: file.id,
+                            fileName: file.name,
+                            mimeType: file.mimeType,
+                            size: file.sizeBytes ? parseInt(file.sizeBytes) : 0,
+                            webContentLink: file.url,
+                            thumbnailLink: file.iconUrl || null
+                        };
+                        
+                        await this.driveService.saveFileMetadata(fileMetadata);
+                        savedCount++;
+                    } catch (error) {
+                        console.error('Failed to save file:', file.name, error);
+                    }
+                }
+                
+                if (savedCount > 0) {
+                    this.showSuccess(`Successfully saved ${savedCount} file(s) to database`);
+                    await this.loadFiles(); // Refresh the files list
+                    await this.loadSavedFiles(); // Refresh saved files list
+                } else {
+                    this.showError('Failed to save selected files');
+                }
+            } else {
+                this.showSuccess('No files selected');
             }
         } catch (error) {
             console.error('Failed to open Google Picker:', error);

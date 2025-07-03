@@ -68,7 +68,7 @@ public class GoogleOAuth2Config {
                     Oauth2Scopes.USERINFO_EMAIL,
                     Oauth2Scopes.USERINFO_PROFILE))
                 .setAccessType("offline")
-                .setApprovalPrompt("force")
+                .setApprovalPrompt("auto")
                 .build();
     }
 
