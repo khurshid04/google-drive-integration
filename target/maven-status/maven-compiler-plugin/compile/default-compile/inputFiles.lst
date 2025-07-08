@@ -10,7 +10,7 @@
 /home/runner/workspace/src/main/java/com/example/googledrive/model/DriveFile.java
 /home/runner/workspace/src/main/java/com/example/googledrive/service/TokenService.java
 /home/runner/workspace/src/main/java/com/example/googledrive/dto/TokenResponseDto.java
-/home/runner/workspace/src/main/java/com/example/googledrive/repository/UserRepository.java
 /home/runner/workspace/src/main/java/com/example/googledrive/repository/DriveFileRepository.java
+/home/runner/workspace/src/main/java/com/example/googledrive/repository/UserRepository.java
 /home/runner/workspace/src/main/java/com/example/googledrive/controller/AuthController.java
 /home/runner/workspace/src/main/java/com/example/googledrive/controller/OAuth2Controller.java
