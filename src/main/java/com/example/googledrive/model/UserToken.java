@@ -23,6 +23,10 @@ public class UserToken {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "provider", nullable = false)
+    private TokenProvider provider;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -42,6 +46,17 @@ public class UserToken {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
         this.expiresAt = expiresAt;
+        this.provider = TokenProvider.GOOGLE;
+    }
+    
+    // Constructor with provider
+    public UserToken(User user, String accessToken, String refreshToken, LocalDateTime expiresAt, TokenProvider provider) {
+        this();
+        this.user = user;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.expiresAt = expiresAt;
+        this.provider = provider;
     }
 
     @PreUpdate
@@ -104,5 +119,13 @@ public class UserToken {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public TokenProvider getProvider() {
+        return provider;
+    }
+    
+    public void setProvider(TokenProvider provider) {
+        this.provider = provider;
     }
 }

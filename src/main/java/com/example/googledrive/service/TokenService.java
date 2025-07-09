@@ -1,5 +1,6 @@
 package com.example.googledrive.service;
 
+import com.example.googledrive.model.TokenProvider;
 import com.example.googledrive.model.User;
 import com.example.googledrive.model.UserToken;
 import com.example.googledrive.repository.UserTokenRepository;
@@ -21,7 +22,7 @@ public class TokenService {
     private GoogleAuthorizationCodeFlow googleAuthorizationCodeFlow;
 
     public UserToken saveTokens(User user, String accessToken, String refreshToken, Long expiresIn) {
-        Optional<UserToken> existingToken = userTokenRepository.findByUser(user);
+        Optional<UserToken> existingToken = userTokenRepository.findByUserAndProvider(user, TokenProvider.GOOGLE);
         
         UserToken userToken;
         if (existingToken.isPresent()) {
@@ -34,21 +35,21 @@ public class TokenService {
             userToken.setUpdatedAt(LocalDateTime.now());
         } else {
             userToken = new UserToken(user, accessToken, refreshToken, 
-                                    LocalDateTime.now().plusSeconds(expiresIn));
+                                    LocalDateTime.now().plusSeconds(expiresIn), TokenProvider.GOOGLE);
         }
         
         return userTokenRepository.save(userToken);
     }
 
     public Optional<UserToken> getTokenByUser(User user) {
-        return userTokenRepository.findByUser(user);
+        return userTokenRepository.findByUserAndProvider(user, TokenProvider.GOOGLE);
     }
 
     public String getValidAccessToken(User user) throws Exception {
-        Optional<UserToken> tokenOpt = userTokenRepository.findByUser(user);
+        Optional<UserToken> tokenOpt = userTokenRepository.findByUserAndProvider(user, TokenProvider.GOOGLE);
         
         if (tokenOpt.isEmpty()) {
-            throw new RuntimeException("No tokens found for user");
+            throw new RuntimeException("No Google tokens found for user");
         }
         
         UserToken userToken = tokenOpt.get();
@@ -91,7 +92,7 @@ public class TokenService {
     }
 
     public void deleteTokens(User user) {
-        Optional<UserToken> tokenOpt = userTokenRepository.findByUser(user);
+        Optional<UserToken> tokenOpt = userTokenRepository.findByUserAndProvider(user, TokenProvider.GOOGLE);
         tokenOpt.ifPresent(userTokenRepository::delete);
     }
 }

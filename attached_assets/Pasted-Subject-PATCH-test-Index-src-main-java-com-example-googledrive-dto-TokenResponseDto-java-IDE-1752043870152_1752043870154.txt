@@ -1,0 +1,276 @@
+Subject: [PATCH] test
+---
+Index: src/main/java/com/example/googledrive/dto/TokenResponseDto.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/googledrive/dto/TokenResponseDto.java b/src/main/java/com/example/googledrive/dto/TokenResponseDto.java
+--- a/src/main/java/com/example/googledrive/dto/TokenResponseDto.java	(revision 2f289dc0dd8f27ba01529d9962d93f7aae98701f)
++++ b/src/main/java/com/example/googledrive/dto/TokenResponseDto.java	(date 1751970580601)
+@@ -1,19 +1,23 @@
+ package com.example.googledrive.dto;
+ 
++import java.time.LocalDateTime;
++
+ public class TokenResponseDto {
+     private String accessToken;
+     private String refreshToken;
+     private Long expiresIn;
++    private LocalDateTime expiresTime;
+     private String tokenType;
+ 
+     // Default constructor
+     public TokenResponseDto() {}
+ 
+     // Constructor
+-    public TokenResponseDto(String accessToken, String refreshToken, Long expiresIn, String tokenType) {
++    public TokenResponseDto(String accessToken, String refreshToken, Long expiresIn, String tokenType, LocalDateTime expiresTime) {
+         this.accessToken = accessToken;
+         this.refreshToken = refreshToken;
+         this.expiresIn = expiresIn;
++        this.expiresTime = expiresTime;
+         this.tokenType = tokenType;
+     }
+ 
+@@ -49,4 +53,12 @@
+     public void setTokenType(String tokenType) {
+         this.tokenType = tokenType;
+     }
++
++    public LocalDateTime getExpiresTime() {
++        return expiresTime;
++    }
++
++    public void setExpiresTime(LocalDateTime expiresTime) {
++        this.expiresTime = expiresTime;
++    }
+ }
+Index: src/main/resources/application.properties
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>ISO-8859-1
+===================================================================
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+--- a/src/main/resources/application.properties	(revision 2f289dc0dd8f27ba01529d9962d93f7aae98701f)
++++ b/src/main/resources/application.properties	(date 1751555923896)
+@@ -24,9 +24,9 @@
+ server.servlet.session.cookie.secure=false
+ 
+ # Google OAuth2 configuration
+-google.client.id=${GOOGLE_CLIENT_ID:your-google-client-id}
+-google.client.secret=${GOOGLE_CLIENT_SECRET:your-google-client-secret}
+-google.redirect.uri=${GOOGLE_REDIRECT_URI:https://535277f8-2786-4fdf-8ae3-a6b75793f150-00-2ml8mwls2p16g.worf.replit.dev/oauth2/callback}
++google.client.id=${GOOGLE_CLIENT_ID:1081895067744-el2e3icqvemnedoesj6h02c3kfonukg8.apps.googleusercontent.com}
++google.client.secret=${GOOGLE_CLIENT_SECRET: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}
++google.redirect.uri=${GOOGLE_REDIRECT_URI:http://khurshid.com:5000/oauth2/callback}
+ 
+ # Logging
+ logging.level.com.example.googledrive=DEBUG
+Index: src/main/java/com/example/googledrive/controller/AuthController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/com/example/googledrive/controller/AuthController.java b/src/main/java/com/example/googledrive/controller/AuthController.java
+--- a/src/main/java/com/example/googledrive/controller/AuthController.java	(revision 2f289dc0dd8f27ba01529d9962d93f7aae98701f)
++++ b/src/main/java/com/example/googledrive/controller/AuthController.java	(date 1751970596462)
+@@ -31,7 +31,7 @@
+     @Value("${google.client.id}")
+     private String googleClientId;
+ 
+-    @Value("${GOOGLE_API_KEY:}")
++    @Value("${GOOGLE_API_KEY:AIzaSyA69WacpN7-e_pRjpVVVmedquvcZZtAGj4}")
+     private String googleApiKey;
+ 
+     @GetMapping("/user")
+@@ -85,7 +85,8 @@
+                     accessToken, 
+                     null, // Don't expose refresh token to frontend
+                     expiresIn,
+-                    "Bearer"
++                    "Bearer",
++                    userToken.getExpiresAt()
+                 );
+                 
+                 return ResponseEntity.ok(response);
+Index: src/main/resources/static/drive.service.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/static/drive.service.js b/src/main/resources/static/drive.service.js
+--- a/src/main/resources/static/drive.service.js	(revision 2f289dc0dd8f27ba01529d9962d93f7aae98701f)
++++ b/src/main/resources/static/drive.service.js	(date 1751881564520)
+@@ -96,26 +96,31 @@
+             // Recent files view
+             const recentView = new google.picker.DocsView(google.picker.ViewId.RECENTLY_PICKED)
+                 .setIncludeFolders(true);
+-            
+-            const picker = new google.picker.PickerBuilder()
+-                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+-                .addView(myDriveView)
+-                .addView(sharedView)
+-                .addView(recentView)
+-                .addView(foldersView)
+-                .setOAuthToken(accessToken)
+-                .setDeveloperKey(this.googleApiKey)
+-                .setCallback((data) => {
+-                    if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+-                        const files = data[google.picker.Response.DOCUMENTS];
+-                        resolve(files);
+-                    } else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
+-                        resolve([]);
+-                    }
+-                })
+-                .build();
+-            
+-            picker.setVisible(true);
++
++            try {
++                            const picker = new google.picker.PickerBuilder()
++                                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
++                                .addView(myDriveView)
++                                .addView(sharedView)
++                                .addView(recentView)
++                                .addView(foldersView)
++                                .setOAuthToken(accessToken)
++                                .setDeveloperKey(this.googleApiKey)
++                                .setCallback((data) => {
++                                    if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
++                                        const files = data[google.picker.Response.DOCUMENTS];
++                                        resolve(files);
++                                    } else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
++                                        resolve([]);
++                                    }
++                                })
++                                .build();
++
++                            picker.setVisible(true);
++                        } catch (error) {
++                            console.error('Error creating Google Picker:', error);
++                            reject(new Error('Failed to create file picker. Please try again.'));
++                        }
+         });
+     }
+ 
+Index: src/main/resources/static/app.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/static/app.js b/src/main/resources/static/app.js
+--- a/src/main/resources/static/app.js	(revision 2f289dc0dd8f27ba01529d9962d93f7aae98701f)
++++ b/src/main/resources/static/app.js	(date 1751985555622)
+@@ -33,8 +33,40 @@
+ 
+         // Open picker button
+         document.getElementById('openPickerBtn').addEventListener('click', () => {
++          console.log("accessToken", this.authService.accessToken);
++          console.log("expiresTime", this.authService.expiresTime);
++
++            const now = Date.now();
++            console.log("now:", now);
++
++            // ✅ Always parse the ISO string
++            const expiresAt = this.authService.expiresTime
++              ? new Date(this.authService.expiresTime).getTime()
++              : null;
++
++            console.log("expiresAt:", expiresAt);
++            // Optional buffer: refresh 1 min before
++            const bufferMillis = 60 * 1000;
++
++            console.log("expiresAt - bufferMillis:", expiresAt - bufferMillis);
++
++            const shouldRefresh = !expiresAt || now >= (expiresAt - bufferMillis);
++          if (shouldRefresh) {
++            console.log("Token expired or about to expire, refreshing...");
++
++            this.authService.checkAuthStatus()
++              .then(() => {
++                this.openGooglePicker();
++              })
++              .catch(error => {
++                console.error('Failed to re-initialize auth service:', error);
++              });
++          } else {
++            console.log("Token still valid, opening picker.");
+             this.openGooglePicker();
++          }
+         });
++
+ 
+         // Save file button in modal
+         document.getElementById('saveFileBtn').addEventListener('click', () => {
+Index: src/main/resources/static/auth.service.js
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/static/auth.service.js b/src/main/resources/static/auth.service.js
+--- a/src/main/resources/static/auth.service.js	(revision 2f289dc0dd8f27ba01529d9962d93f7aae98701f)
++++ b/src/main/resources/static/auth.service.js	(date 1751970729802)
+@@ -2,6 +2,7 @@
+     constructor() {
+         this.currentUser = null;
+         this.accessToken = null;
++        this.expiresTime = null;
+         this.isInitialized = false;
+     }
+ 
+@@ -34,6 +35,7 @@
+                 return user;
+             } else {
+                 this.currentUser = null;
++                this.expiresTime = null;
+                 this.accessToken = null;
+                 return null;
+             }
+@@ -41,6 +43,7 @@
+             console.error('Failed to check auth status:', error);
+             this.currentUser = null;
+             this.accessToken = null;
++            this.expiresTime = null;
+             return null;
+         }
+     }
+@@ -104,14 +107,17 @@
+             if (response.ok) {
+                 const tokenData = await response.json();
+                 this.accessToken = tokenData.accessToken;
++                this.expiresTime = tokenData.expiresTime;
+                 return tokenData.accessToken;
+             } else {
+                 this.accessToken = null;
++                this.expiresTime = null;
+                 throw new Error('Failed to get access token');
+             }
+         } catch (error) {
+             console.error('Failed to refresh access token:', error);
+             this.accessToken = null;
++            this.expiresTime = null;
+             throw error;
+         }
+     }
+@@ -125,7 +131,8 @@
+ 
+             this.currentUser = null;
+             this.accessToken = null;
+-            
++            this.expiresTime = null;
++
+             return response.ok;
+         } catch (error) {
+             console.error('Logout failed:', error);
+@@ -148,6 +155,10 @@
+     getAccessToken() {
+         return this.accessToken;
+     }
++
++    getExpiresTime() {
++        return this.expiresTime;
++    }
+ }
+ 
+ // Global instance

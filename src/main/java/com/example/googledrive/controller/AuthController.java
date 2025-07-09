@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -31,27 +32,51 @@ public class AuthController {
     @Value("${google.client.id}")
     private String googleClientId;
 
-    @Value("${GOOGLE_API_KEY:}")
+    @Value("${GOOGLE_API_KEY:AIzaSyA69WacpN7-e_pRjpVVVmedquvcZZtAGj4}")
     private String googleApiKey;
+    
+    @Value("${microsoft.client.id}")
+    private String microsoftClientId;
 
     @GetMapping("/user")
     public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
+        
+        // If session doesn't have userId, try to reestablish from any valid tokens
         if (userId == null) {
+            // Check if there are any active sessions with valid tokens
+            // This is a fallback for when session expires but tokens are still valid
             return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
         }
 
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
+            // Clear invalid session
+            session.invalidate();
             return ResponseEntity.status(404).body(Map.of("error", "User not found"));
         }
 
         User user = userOpt.get();
+        
+        // Check if user has valid tokens
+        boolean hasValidTokens = false;
+        try {
+            Optional<UserToken> tokenOpt = tokenService.getTokenByUser(user);
+            if (tokenOpt.isPresent()) {
+                UserToken token = tokenOpt.get();
+                // Check if token is not expired
+                hasValidTokens = token.getExpiresAt().isAfter(LocalDateTime.now());
+            }
+        } catch (Exception e) {
+            // Token validation failed
+            hasValidTokens = false;
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("id", user.getId());
         response.put("email", user.getEmail());
         response.put("name", user.getName());
-        response.put("isConnected", tokenService.getTokenByUser(user).isPresent());
+        response.put("isConnected", hasValidTokens);
 
         return ResponseEntity.ok(response);
     }
@@ -85,7 +110,8 @@ public class AuthController {
                     accessToken, 
                     null, // Don't expose refresh token to frontend
                     expiresIn,
-                    "Bearer"
+                    "Bearer",
+                    userToken.getExpiresAt()
                 );
                 
                 return ResponseEntity.ok(response);
@@ -117,6 +143,7 @@ public class AuthController {
         Map<String, String> config = new HashMap<>();
         config.put("googleClientId", googleClientId);
         config.put("googleApiKey", googleApiKey);
+        config.put("microsoftClientId", microsoftClientId);
         return ResponseEntity.ok(config);
     }
 }

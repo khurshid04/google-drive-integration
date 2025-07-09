@@ -2,6 +2,7 @@ class App {
     constructor() {
         this.authService = window.authService;
         this.driveService = window.driveService;
+        this.microsoftService = window.microsoftService;
         this.currentFiles = [];
         this.savedFiles = [];
         this.selectedFile = null;
@@ -11,6 +12,7 @@ class App {
         try {
             await this.authService.init();
             await this.driveService.init();
+            await this.microsoftService.init();
             
             this.setupEventListeners();
             await this.updateUI();
@@ -33,7 +35,38 @@ class App {
 
         // Open picker button
         document.getElementById('openPickerBtn').addEventListener('click', () => {
+          console.log("accessToken", this.authService.accessToken);
+          console.log("expiresTime", this.authService.expiresTime);
+
+            const now = Date.now();
+            console.log("now:", now);
+
+            // ✅ Always parse the ISO string
+            const expiresAt = this.authService.expiresTime
+              ? new Date(this.authService.expiresTime).getTime()
+              : null;
+
+            console.log("expiresAt:", expiresAt);
+            // Optional buffer: refresh 1 min before
+            const bufferMillis = 60 * 1000;
+
+            console.log("expiresAt - bufferMillis:", expiresAt - bufferMillis);
+
+            const shouldRefresh = !expiresAt || now >= (expiresAt - bufferMillis);
+          if (shouldRefresh) {
+            console.log("Token expired or about to expire, refreshing...");
+
+            this.authService.checkAuthStatus()
+              .then(() => {
+                this.openGooglePicker();
+              })
+              .catch(error => {
+                console.error('Failed to re-initialize auth service:', error);
+              });
+          } else {
+            console.log("Token still valid, opening picker.");
             this.openGooglePicker();
+          }
         });
 
         // Save file button in modal

@@ -2,6 +2,7 @@ class AuthService {
     constructor() {
         this.currentUser = null;
         this.accessToken = null;
+        this.expiresTime = null;
         this.isInitialized = false;
     }
 
@@ -34,6 +35,7 @@ class AuthService {
                 return user;
             } else {
                 this.currentUser = null;
+                this.expiresTime = null;
                 this.accessToken = null;
                 return null;
             }
@@ -41,6 +43,7 @@ class AuthService {
             console.error('Failed to check auth status:', error);
             this.currentUser = null;
             this.accessToken = null;
+            this.expiresTime = null;
             return null;
         }
     }
@@ -104,14 +107,17 @@ class AuthService {
             if (response.ok) {
                 const tokenData = await response.json();
                 this.accessToken = tokenData.accessToken;
+                this.expiresTime = tokenData.expiresTime;
                 return tokenData.accessToken;
             } else {
                 this.accessToken = null;
+                this.expiresTime = null;
                 throw new Error('Failed to get access token');
             }
         } catch (error) {
             console.error('Failed to refresh access token:', error);
             this.accessToken = null;
+            this.expiresTime = null;
             throw error;
         }
     }
@@ -125,7 +131,8 @@ class AuthService {
 
             this.currentUser = null;
             this.accessToken = null;
-            
+            this.expiresTime = null;
+
             return response.ok;
         } catch (error) {
             console.error('Logout failed:', error);
@@ -147,6 +154,10 @@ class AuthService {
 
     getAccessToken() {
         return this.accessToken;
+    }
+
+    getExpiresTime() {
+        return this.expiresTime;
     }
 }
 
