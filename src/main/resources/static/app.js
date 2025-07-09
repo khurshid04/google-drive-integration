@@ -1,8 +1,8 @@
 class App {
     constructor() {
-        this.authService = window.authService;
-        this.driveService = window.driveService;
-        this.microsoftService = window.microsoftService;
+        this.authService = window.authService || new AuthService();
+        this.driveService = window.driveService || new DriveService();
+        this.microsoftService = window.microsoftService || new MicrosoftService();
         this.currentFiles = [];
         this.savedFiles = [];
         this.selectedFile = null;
@@ -10,23 +10,44 @@ class App {
 
     async init() {
         try {
-            await this.authService.init();
-            await this.driveService.init();
-            await this.microsoftService.init();
+            // Initialize services with proper error handling
+            if (this.authService && this.authService.init) {
+                await this.authService.init();
+            }
+            if (this.driveService && this.driveService.init) {
+                await this.driveService.init();
+            }
+            if (this.microsoftService && this.microsoftService.init) {
+                await this.microsoftService.init();
+            }
             
             this.setupEventListeners();
             await this.updateUI();
         } catch (error) {
             console.error('Failed to initialize app:', error);
-            this.showError('Failed to initialize application');
+            // Show auth section as fallback
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('mainSection').style.display = 'none';
+            document.getElementById('userInfo').style.display = 'none';
         }
     }
 
     setupEventListeners() {
-        // Connect button
-        document.getElementById('connectBtn').addEventListener('click', () => {
-            this.connectGoogleDrive();
-        });
+        // Connect Google Drive button
+        const connectGoogleBtn = document.getElementById('connectGoogleBtn');
+        if (connectGoogleBtn) {
+            connectGoogleBtn.addEventListener('click', () => {
+                this.connectGoogleDrive();
+            });
+        }
+
+        // Connect Microsoft OneDrive button
+        const connectMicrosoftBtn = document.getElementById('connectMicrosoftBtn');
+        if (connectMicrosoftBtn) {
+            connectMicrosoftBtn.addEventListener('click', () => {
+                this.connectMicrosoft();
+            });
+        }
 
         // Logout button
         document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -138,6 +159,22 @@ class App {
         } catch (error) {
             console.error('Failed to connect to Google Drive:', error);
             this.showError('Failed to connect to Google Drive. Please try again.');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async connectMicrosoft() {
+        try {
+            this.showLoading(true);
+            const user = await this.microsoftService.connectMicrosoft();
+            if (user) {
+                await this.updateUI();
+                this.showSuccess('Successfully connected to Microsoft OneDrive!');
+            }
+        } catch (error) {
+            console.error('Failed to connect:', error);
+            this.showError('Failed to connect to Microsoft OneDrive');
         } finally {
             this.showLoading(false);
         }
@@ -444,17 +481,15 @@ class App {
     }
 }
 
+// Initialize global services
+window.authService = new AuthService();
+window.driveService = new DriveService();
+window.microsoftService = new MicrosoftService();
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new App();
     window.app.init();
 });
 
-// Handle Google API loading
-function gapiLoaded() {
-    console.log('Google API loaded');
-}
-
-function gisLoaded() {
-    console.log('Google Identity Services loaded');
-}
+// Google API functions are now defined in index.html
