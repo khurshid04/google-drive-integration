@@ -6,6 +6,7 @@ import com.example.googledrive.repository.UserRepository;
 import com.example.googledrive.service.TokenService;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
 import com.google.api.services.oauth2.Oauth2;
 import com.google.api.services.oauth2.model.Userinfo;
@@ -44,7 +45,7 @@ public class OAuth2Controller {
         String authorizationUrl = googleAuthFlow.newAuthorizationUrl()
             .setRedirectUri(googleConfig.getRedirectUri())
             .setAccessType("offline")
-            .setApprovalPrompt("auto")
+            .setApprovalPrompt("force")
             .build();
 
         Map<String, String> response = new HashMap<>();
@@ -71,6 +72,29 @@ public class OAuth2Controller {
             String accessToken = tokenResponse.getAccessToken();
             String refreshToken = tokenResponse.getRefreshToken();
             Long expiresIn = tokenResponse.getExpiresInSeconds();
+
+            ///  Test
+            // ✅ For testing, override with 5 minutes (300 seconds)
+                        Long testExpiresInSeconds = 300L;
+
+            // Create Credential and override expiry
+                        GoogleCredential credential = new GoogleCredential.Builder()
+                                .setTransport(googleAuthFlow.getTransport())
+                                .setJsonFactory(googleAuthFlow.getJsonFactory())
+                                .setClientSecrets(googleConfig.getClientId(), "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")
+                                .build()
+                                .setFromTokenResponse(tokenResponse);
+
+            // Manually override the expiry time
+                        credential.setExpirationTimeMilliseconds(
+                                System.currentTimeMillis() + (testExpiresInSeconds)
+                        );
+
+
+            expiresIn = credential.getExpiresInSeconds();
+            // Store credential and use it
+            ///  Test
+
 
             // Get user info from Google using direct HTTP request
             String userInfoUrl = "https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + accessToken;
