@@ -1,4 +1,4 @@
-modules = ["java"]
+modules = ["nodejs-20", "java-graalvm22.3", "web"]
 
 [nix]
 channel = "stable-24_05"
@@ -22,13 +22,9 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "mvn clean install -DskipTests && mvn spring-boot:run -Dspring-boot.run.jvmArguments=\"-Dserver.port=5000\""
+args = "java -jar -Dserver.port=5000 target/google-drive-integration-0.0.1-SNAPSHOT.jar"
 waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 5000
-
-[[ports]]
-localPort = 35729
-externalPort = 80

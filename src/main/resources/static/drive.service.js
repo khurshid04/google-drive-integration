@@ -97,25 +97,30 @@ class DriveService {
             const recentView = new google.picker.DocsView(google.picker.ViewId.RECENTLY_PICKED)
                 .setIncludeFolders(true);
             
-            const picker = new google.picker.PickerBuilder()
-                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-                .addView(myDriveView)
-                .addView(sharedView)
-                .addView(recentView)
-                .addView(foldersView)
-                .setOAuthToken(accessToken)
-                .setDeveloperKey(this.googleApiKey)
-                .setCallback((data) => {
-                    if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
-                        const files = data[google.picker.Response.DOCUMENTS];
-                        resolve(files);
-                    } else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
-                        resolve([]);
-                    }
-                })
-                .build();
-            
-            picker.setVisible(true);
+            try {
+                            const picker = new google.picker.PickerBuilder()
+                                .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+                                .addView(myDriveView)
+                                .addView(sharedView)
+                                .addView(recentView)
+                                .addView(foldersView)
+                                .setOAuthToken(accessToken)
+                                .setDeveloperKey(this.googleApiKey)
+                                .setCallback((data) => {
+                                    if (data[google.picker.Response.ACTION] === google.picker.Action.PICKED) {
+                                        const files = data[google.picker.Response.DOCUMENTS];
+                                        resolve(files);
+                                    } else if (data[google.picker.Response.ACTION] === google.picker.Action.CANCEL) {
+                                        resolve([]);
+                                    }
+                                })
+                                .build();
+
+                            picker.setVisible(true);
+                        } catch (error) {
+                            console.error('Error creating Google Picker:', error);
+                            reject(new Error('Failed to create file picker. Please try again.'));
+                        }
         });
     }
 
