@@ -74,6 +74,8 @@ class App {
             console.log("expiresAt - bufferMillis:", expiresAt - bufferMillis);
 
             const shouldRefresh = !expiresAt || now >= (expiresAt - bufferMillis);
+            console.log("shouldRefresh:", shouldRefresh);
+
           if (shouldRefresh) {
             console.log("Token expired or about to expire, refreshing...");
 
