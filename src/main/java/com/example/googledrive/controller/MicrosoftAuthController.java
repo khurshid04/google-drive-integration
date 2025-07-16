@@ -175,6 +175,72 @@ public class MicrosoftAuthController {
         }
     }
 
+    @GetMapping("/sites")
+    public ResponseEntity<?> getSharePointSites(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        try {
+            String accessToken = microsoftTokenService.getValidAccessToken(userOpt.get());
+            
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                "https://graph.microsoft.com/v1.0/sites?search=*",
+                HttpMethod.GET,
+                entity,
+                Map.class
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch SharePoint sites: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sites/{siteId}/files")
+    public ResponseEntity<?> getSiteFiles(@PathVariable String siteId, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        try {
+            String accessToken = microsoftTokenService.getValidAccessToken(userOpt.get());
+            
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drive/root/children",
+                HttpMethod.GET,
+                entity,
+                Map.class
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch SharePoint site files: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");

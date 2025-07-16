@@ -144,28 +144,37 @@ class MicrosoftService {
     }
 
     async loadOneDriveFiles() {
+        const filesList = document.getElementById('microsoftFilesList');
         try {
-            if (!this.accessToken) {
-                throw new Error('No access token available');
+            // Show loading state
+            if (filesList) {
+                filesList.innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading OneDrive files...</p>
+                    </div>
+                `;
             }
             
-            const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
-                headers: {
-                    'Authorization': `Bearer ${this.accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch OneDrive files');
-            }
-            
-            const data = await response.json();
-            return data.value || [];
+            // Use backend API for better reliability
+            const files = await this.getUserFiles();
+            return files;
         } catch (error) {
             console.error('Error loading OneDrive files:', error);
-            // Fallback to backend API
-            return await this.getUserFiles();
+            if (filesList) {
+                filesList.innerHTML = `
+                    <div class="col-12 text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <p>Failed to load OneDrive files</p>
+                        <button class="btn btn-primary btn-sm mt-2" onclick="window.microsoftService.loadOneDriveFiles()">
+                            <i class="fas fa-redo"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+            throw error;
         }
     }
 
@@ -449,19 +458,19 @@ class MicrosoftService {
     }
 
     getFileIcon(mimeType) {
-        if (!mimeType) return 'fas fa-file';
+        if (!mimeType) return '<i class="fas fa-file fa-2x text-secondary"></i>';
         
-        if (mimeType.includes('image')) return 'fas fa-file-image';
-        if (mimeType.includes('video')) return 'fas fa-file-video';
-        if (mimeType.includes('audio')) return 'fas fa-file-audio';
-        if (mimeType.includes('pdf')) return 'fas fa-file-pdf';
-        if (mimeType.includes('word')) return 'fas fa-file-word';
-        if (mimeType.includes('excel')) return 'fas fa-file-excel';
-        if (mimeType.includes('powerpoint')) return 'fas fa-file-powerpoint';
-        if (mimeType.includes('zip') || mimeType.includes('archive')) return 'fas fa-file-archive';
-        if (mimeType.includes('text')) return 'fas fa-file-alt';
+        if (mimeType.includes('image')) return '<i class="fas fa-file-image fa-2x text-info"></i>';
+        if (mimeType.includes('video')) return '<i class="fas fa-file-video fa-2x text-danger"></i>';
+        if (mimeType.includes('audio')) return '<i class="fas fa-file-audio fa-2x text-success"></i>';
+        if (mimeType.includes('pdf')) return '<i class="fas fa-file-pdf fa-2x text-danger"></i>';
+        if (mimeType.includes('word') || mimeType.includes('document')) return '<i class="fas fa-file-word fa-2x text-primary"></i>';
+        if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '<i class="fas fa-file-excel fa-2x text-success"></i>';
+        if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return '<i class="fas fa-file-powerpoint fa-2x text-warning"></i>';
+        if (mimeType.includes('zip') || mimeType.includes('archive')) return '<i class="fas fa-file-archive fa-2x text-dark"></i>';
+        if (mimeType.includes('text')) return '<i class="fas fa-file-alt fa-2x text-secondary"></i>';
         
-        return 'fas fa-file';
+        return '<i class="fas fa-file fa-2x text-secondary"></i>';
     }
 
     formatFileSize(bytes) {
@@ -512,11 +521,40 @@ class MicrosoftService {
         document.getElementById('sharePointTab').classList.add('active');
         document.getElementById('oneDriveTab').classList.remove('active');
         
+        const filesList = document.getElementById('microsoftFilesList');
+        
         try {
+            // Show loading state
+            if (filesList) {
+                filesList.innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading SharePoint sites...</p>
+                    </div>
+                `;
+            }
+            
             const sites = await this.getSharePointSites();
             this.displaySharePointSites(sites);
         } catch (error) {
             console.error('Error loading SharePoint sites:', error);
+            
+            if (filesList) {
+                filesList.innerHTML = `
+                    <div class="col-12 text-center">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <p>Failed to load SharePoint sites</p>
+                        <small class="text-muted">Make sure you have access to SharePoint sites</small>
+                        <br>
+                        <button class="btn btn-primary btn-sm mt-2" onclick="window.microsoftService.switchToSharePoint()">
+                            <i class="fas fa-redo"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+            
             if (window.app && window.app.showError) {
                 window.app.showError('Failed to load SharePoint sites');
             }
