@@ -112,6 +112,179 @@ class MicrosoftService {
         }
     }
 
+    async openMicrosoftPicker() {
+        try {
+            // Show file picker modal
+            this.showFilePickerModal();
+            
+            // Load files from OneDrive
+            const files = await this.getUserFiles();
+            this.displayFilesInPicker(files);
+            
+        } catch (error) {
+            console.error('Error opening Microsoft picker:', error);
+            throw error;
+        }
+    }
+
+    showFilePickerModal() {
+        // Create modal HTML
+        const modalHtml = `
+            <div class="modal fade" id="microsoftPickerModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fab fa-microsoft me-2"></i>
+                                Select Files from OneDrive
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="microsoftFilesList" class="row">
+                                <div class="col-12 text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2">Loading OneDrive files...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" id="selectMicrosoftFilesBtn" class="btn btn-primary" disabled>
+                                Select Files
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if present
+        const existingModal = document.getElementById('microsoftPickerModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('microsoftPickerModal'));
+        modal.show();
+        
+        // Set up select button handler
+        document.getElementById('selectMicrosoftFilesBtn').addEventListener('click', () => {
+            this.handleFileSelection();
+            modal.hide();
+        });
+    }
+
+    displayFilesInPicker(files) {
+        const filesList = document.getElementById('microsoftFilesList');
+        
+        if (!files || files.length === 0) {
+            filesList.innerHTML = `
+                <div class="col-12 text-center">
+                    <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                    <p>No files found in your OneDrive</p>
+                </div>
+            `;
+            return;
+        }
+        
+        filesList.innerHTML = files.map(file => `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card file-card" data-file-id="${file.id}">
+                    <div class="card-body text-center">
+                        <div class="file-icon mb-2">
+                            ${this.getFileIcon(file.file?.mimeType || 'application/octet-stream')}
+                        </div>
+                        <h6 class="card-title text-truncate" title="${file.name}">${file.name}</h6>
+                        <small class="text-muted">
+                            ${this.formatFileSize(file.size)}
+                            <br>
+                            ${new Date(file.lastModifiedDateTime).toLocaleDateString()}
+                        </small>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input file-checkbox" type="checkbox" 
+                                   data-file='${JSON.stringify(file)}' id="file-${file.id}">
+                            <label class="form-check-label" for="file-${file.id}">
+                                Select
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        // Enable/disable select button based on selections
+        const checkboxes = filesList.querySelectorAll('.file-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                const selectedCount = filesList.querySelectorAll('.file-checkbox:checked').length;
+                document.getElementById('selectMicrosoftFilesBtn').disabled = selectedCount === 0;
+            });
+        });
+    }
+
+    async handleFileSelection() {
+        const selectedCheckboxes = document.querySelectorAll('#microsoftFilesList .file-checkbox:checked');
+        const selectedFiles = Array.from(selectedCheckboxes).map(checkbox => 
+            JSON.parse(checkbox.dataset.file)
+        );
+        
+        if (selectedFiles.length === 0) {
+            return;
+        }
+        
+        try {
+            // Save selected files to backend
+            for (const file of selectedFiles) {
+                await this.saveFileMetadata(file);
+            }
+            
+            // Trigger app refresh
+            if (window.app && window.app.loadSavedFiles) {
+                await window.app.loadSavedFiles();
+            }
+            
+            // Show success message
+            if (window.app && window.app.showSuccess) {
+                window.app.showSuccess(`Selected ${selectedFiles.length} file(s) from OneDrive`);
+            }
+            
+        } catch (error) {
+            console.error('Error handling file selection:', error);
+            if (window.app && window.app.showError) {
+                window.app.showError('Failed to save selected files');
+            }
+        }
+    }
+
+    async saveFileMetadata(fileMetadata) {
+        try {
+            const response = await fetch('/api/microsoft/files/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(fileMetadata)
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to save file metadata');
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Error saving Microsoft file metadata:', error);
+            throw error;
+        }
+    }
+
     async downloadFile(fileId, fileName) {
         try {
             const response = await fetch(`/api/microsoft/files/${fileId}/download`, {

@@ -101,6 +101,14 @@ class App {
         document.getElementById('downloadFileBtn').addEventListener('click', () => {
             this.downloadSelectedFile();
         });
+
+        // Open Microsoft picker button
+        const openMicrosoftPickerBtn = document.getElementById('openMicrosoftPickerBtn');
+        if (openMicrosoftPickerBtn) {
+            openMicrosoftPickerBtn.addEventListener('click', () => {
+                this.openMicrosoftPicker();
+            });
+        }
     }
 
     async updateUI() {
@@ -173,10 +181,32 @@ class App {
             if (user) {
                 await this.updateUI();
                 this.showSuccess('Successfully connected to Microsoft OneDrive!');
+                
+                // Auto-open Microsoft picker after successful connection
+                setTimeout(async () => {
+                    try {
+                        await this.openMicrosoftPicker();
+                    } catch (error) {
+                        console.error('Failed to open picker after authentication:', error);
+                        this.showError('Please try clicking "Select Files from OneDrive" button manually.');
+                    }
+                }, 2000);
             }
         } catch (error) {
             console.error('Failed to connect:', error);
             this.showError('Failed to connect to Microsoft OneDrive');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async openMicrosoftPicker() {
+        try {
+            this.showLoading(true);
+            await this.microsoftService.openMicrosoftPicker();
+        } catch (error) {
+            console.error('Failed to open Microsoft picker:', error);
+            this.showError('Failed to open OneDrive file picker');
         } finally {
             this.showLoading(false);
         }

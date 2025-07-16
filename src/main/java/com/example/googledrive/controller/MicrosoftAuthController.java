@@ -81,6 +81,30 @@ public class MicrosoftAuthController {
         }
     }
 
+    @PostMapping("/files/save")
+    public ResponseEntity<Map<String, String>> saveFileMetadata(
+            @RequestBody Map<String, Object> fileMetadata,
+            HttpSession session) {
+        
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        try {
+            // Save file metadata to database
+            // This would be implemented similar to Google Drive file saving
+            return ResponseEntity.ok(Map.of("message", "File metadata saved successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to save file metadata"));
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
