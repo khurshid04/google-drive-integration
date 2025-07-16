@@ -3,6 +3,10 @@ class MicrosoftService {
         this.graphBaseUrl = 'https://graph.microsoft.com/v1.0';
         this.isInitialized = false;
         this.microsoftClientId = null;
+        this.accessToken = null;
+        this.currentPath = '/';
+        this.currentView = 'onedrive'; // 'onedrive' or 'sharepoint'
+        window.microsoftService = this; // Make globally accessible
     }
 
     async init() {
@@ -169,16 +173,29 @@ class MicrosoftService {
         // Create modal HTML
         const modalHtml = `
             <div class="modal fade" id="microsoftPickerModal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
+                <div class="modal-dialog modal-xl">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">
                                 <i class="fab fa-microsoft me-2"></i>
-                                Select Files from OneDrive
+                                Select Files from OneDrive & SharePoint
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary active" id="oneDriveTab" onclick="window.microsoftService.switchToOneDrive()">
+                                            <i class="fab fa-microsoft me-1"></i> OneDrive
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" id="sharePointTab" onclick="window.microsoftService.switchToSharePoint()">
+                                            <i class="fas fa-sitemap me-1"></i> SharePoint
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="microsoftBreadcrumb"></div>
                             <div id="microsoftFilesList" class="row">
                                 <div class="col-12 text-center">
                                     <div class="spinner-border text-primary" role="status">
@@ -199,11 +216,15 @@ class MicrosoftService {
             </div>
         `;
         
-        // Remove existing modal if present
+        // Remove existing modal if present and prevent duplicate popups
         const existingModal = document.getElementById('microsoftPickerModal');
         if (existingModal) {
             existingModal.remove();
         }
+        
+        // Clear any existing bootstrap modal backdrop
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
         
         // Add modal to page
         document.body.insertAdjacentHTML('beforeend', modalHtml);
@@ -219,43 +240,60 @@ class MicrosoftService {
         });
     }
 
-    displayFilesInPicker(files) {
+    displayFilesInPicker(files, currentPath = '/') {
         const filesList = document.getElementById('microsoftFilesList');
+        
+        // Update breadcrumb
+        this.updateBreadcrumb(currentPath);
         
         if (!files || files.length === 0) {
             filesList.innerHTML = `
                 <div class="col-12 text-center">
                     <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
-                    <p>No files found in your OneDrive</p>
+                    <p>No files found in this location</p>
                 </div>
             `;
             return;
         }
         
-        filesList.innerHTML = files.map(file => `
-            <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card file-card" data-file-id="${file.id}">
-                    <div class="card-body text-center">
-                        <div class="file-icon mb-2">
-                            ${this.getFileIcon(file.file?.mimeType || 'application/octet-stream')}
-                        </div>
-                        <h6 class="card-title text-truncate" title="${file.name}">${file.name}</h6>
-                        <small class="text-muted">
-                            ${this.formatFileSize(file.size)}
-                            <br>
-                            ${new Date(file.lastModifiedDateTime).toLocaleDateString()}
-                        </small>
-                        <div class="form-check mt-2">
-                            <input class="form-check-input file-checkbox" type="checkbox" 
-                                   data-file='${JSON.stringify(file)}' id="file-${file.id}">
-                            <label class="form-check-label" for="file-${file.id}">
-                                Select
-                            </label>
+        filesList.innerHTML = files.map(file => {
+            const isFolder = file.folder !== undefined;
+            const icon = isFolder ? '<i class="fas fa-folder fa-2x text-warning"></i>' : this.getFileIcon(file.file?.mimeType || 'application/octet-stream');
+            
+            return `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="card file-card ${isFolder ? 'folder-card' : ''}" 
+                         data-file-id="${file.id}" 
+                         data-file-type="${isFolder ? 'folder' : 'file'}"
+                         ${isFolder ? `onclick="window.microsoftService.navigateToFolder('${file.id}', '${file.name}')"` : ''}>
+                        <div class="card-body text-center">
+                            <div class="file-icon mb-2">
+                                ${icon}
+                            </div>
+                            <h6 class="card-title text-truncate" title="${file.name}">${file.name}</h6>
+                            <small class="text-muted">
+                                ${isFolder ? `${file.folder.childCount || 0} items` : this.formatFileSize(file.size)}
+                                <br>
+                                ${new Date(file.lastModifiedDateTime).toLocaleDateString()}
+                            </small>
+                            ${!isFolder ? `
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input file-checkbox" type="checkbox" 
+                                           data-file='${JSON.stringify(file)}' id="file-${file.id}">
+                                    <label class="form-check-label" for="file-${file.id}">
+                                        Select
+                                    </label>
+                                </div>
+                            ` : `
+                                <div class="mt-2">
+                                    <small class="text-primary"><i class="fas fa-mouse-pointer"></i> Click to open</small>
+                                </div>
+                            `}
                         </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
         // Enable/disable select button based on selections
         const checkboxes = filesList.querySelectorAll('.file-checkbox');
@@ -265,6 +303,68 @@ class MicrosoftService {
                 document.getElementById('selectMicrosoftFilesBtn').disabled = selectedCount === 0;
             });
         });
+    }
+
+    updateBreadcrumb(currentPath) {
+        const breadcrumbContainer = document.getElementById('microsoftBreadcrumb');
+        if (!breadcrumbContainer) return;
+        
+        const pathParts = currentPath.split('/').filter(part => part);
+        let breadcrumb = '<nav aria-label="breadcrumb"><ol class="breadcrumb mb-2">';
+        
+        breadcrumb += '<li class="breadcrumb-item"><a href="#" onclick="window.microsoftService.navigateToRoot()">OneDrive</a></li>';
+        
+        pathParts.forEach((part, index) => {
+            if (index === pathParts.length - 1) {
+                breadcrumb += `<li class="breadcrumb-item active">${part}</li>`;
+            } else {
+                const partialPath = '/' + pathParts.slice(0, index + 1).join('/');
+                breadcrumb += `<li class="breadcrumb-item"><a href="#" onclick="window.microsoftService.navigateToPath('${partialPath}')">${part}</a></li>`;
+            }
+        });
+        
+        breadcrumb += '</ol></nav>';
+        breadcrumbContainer.innerHTML = breadcrumb;
+    }
+
+    async navigateToFolder(folderId, folderName) {
+        try {
+            const loadingDiv = document.getElementById('microsoftFilesList');
+            loadingDiv.innerHTML = `
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading folder contents...</p>
+                </div>
+            `;
+            
+            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load folder contents');
+            }
+            
+            const data = await response.json();
+            this.currentPath = this.currentPath + '/' + folderName;
+            this.displayFilesInPicker(data.value || [], this.currentPath);
+        } catch (error) {
+            console.error('Error navigating to folder:', error);
+            if (window.app && window.app.showError) {
+                window.app.showError('Failed to load folder contents');
+            }
+        }
+    }
+
+    async navigateToRoot() {
+        this.currentPath = '/';
+        const files = await this.loadOneDriveFiles();
+        this.displayFilesInPicker(files, this.currentPath);
     }
 
     async handleFileSelection() {
@@ -395,6 +495,103 @@ class MicrosoftService {
         }
         
         return 'File';
+    }
+
+    async switchToOneDrive() {
+        this.currentView = 'onedrive';
+        document.getElementById('oneDriveTab').classList.add('active');
+        document.getElementById('sharePointTab').classList.remove('active');
+        
+        this.currentPath = '/';
+        const files = await this.loadOneDriveFiles();
+        this.displayFilesInPicker(files, this.currentPath);
+    }
+
+    async switchToSharePoint() {
+        this.currentView = 'sharepoint';
+        document.getElementById('sharePointTab').classList.add('active');
+        document.getElementById('oneDriveTab').classList.remove('active');
+        
+        try {
+            const sites = await this.getSharePointSites();
+            this.displaySharePointSites(sites);
+        } catch (error) {
+            console.error('Error loading SharePoint sites:', error);
+            if (window.app && window.app.showError) {
+                window.app.showError('Failed to load SharePoint sites');
+            }
+        }
+    }
+
+    displaySharePointSites(sites) {
+        const filesList = document.getElementById('microsoftFilesList');
+        const breadcrumbContainer = document.getElementById('microsoftBreadcrumb');
+        
+        breadcrumbContainer.innerHTML = '<nav aria-label="breadcrumb"><ol class="breadcrumb mb-2"><li class="breadcrumb-item active">SharePoint Sites</li></ol></nav>';
+        
+        if (!sites || sites.length === 0) {
+            filesList.innerHTML = `
+                <div class="col-12 text-center">
+                    <i class="fas fa-sitemap fa-3x text-muted mb-3"></i>
+                    <p>No SharePoint sites found</p>
+                </div>
+            `;
+            return;
+        }
+        
+        filesList.innerHTML = sites.map(site => `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card site-card" onclick="window.microsoftService.navigateToSharePointSite('${site.id}', '${site.displayName}')">
+                    <div class="card-body text-center">
+                        <div class="site-icon mb-2">
+                            <i class="fas fa-sitemap fa-2x text-info"></i>
+                        </div>
+                        <h6 class="card-title text-truncate" title="${site.displayName}">${site.displayName}</h6>
+                        <small class="text-muted">
+                            SharePoint Site
+                            <br>
+                            ${new Date(site.lastModifiedDateTime).toLocaleDateString()}
+                        </small>
+                        <div class="mt-2">
+                            <small class="text-primary"><i class="fas fa-mouse-pointer"></i> Click to open</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async navigateToSharePointSite(siteId, siteName) {
+        try {
+            const loadingDiv = document.getElementById('microsoftFilesList');
+            loadingDiv.innerHTML = `
+                <div class="col-12 text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading SharePoint files...</p>
+                </div>
+            `;
+            
+            const files = await this.getSiteFiles(siteId);
+            
+            const breadcrumbContainer = document.getElementById('microsoftBreadcrumb');
+            breadcrumbContainer.innerHTML = `
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-2">
+                        <li class="breadcrumb-item"><a href="#" onclick="window.microsoftService.switchToSharePoint()">SharePoint</a></li>
+                        <li class="breadcrumb-item active">${siteName}</li>
+                    </ol>
+                </nav>
+            `;
+            
+            this.displayFilesInPicker(files, '/' + siteName);
+        } catch (error) {
+            console.error('Error loading SharePoint site:', error);
+            if (window.app && window.app.showError) {
+                window.app.showError('Failed to load SharePoint site files');
+            }
+        }
     }
 }
 
