@@ -133,9 +133,9 @@ class MicrosoftService {
             // Show file picker modal
             this.showFilePickerModal();
             
-            // Load files from OneDrive using Graph API directly
+            // Load files from OneDrive
             const files = await this.loadOneDriveFiles();
-            this.displayFilesInPicker(files);
+            this.displayFilesInPicker(files, this.currentPath);
             
         } catch (error) {
             console.error('Error opening Microsoft picker:', error);
@@ -206,12 +206,7 @@ class MicrosoftService {
                             </div>
                             <div id="microsoftBreadcrumb"></div>
                             <div id="microsoftFilesList" class="row">
-                                <div class="col-12 text-center">
-                                    <div class="spinner-border text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <p class="mt-2">Loading OneDrive files...</p>
-                                </div>
+                                <!-- Files will be loaded here -->
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -251,6 +246,11 @@ class MicrosoftService {
 
     displayFilesInPicker(files, currentPath = '/') {
         const filesList = document.getElementById('microsoftFilesList');
+        
+        // Clear any existing content first
+        if (filesList) {
+            filesList.innerHTML = '';
+        }
         
         // Update breadcrumb
         this.updateBreadcrumb(currentPath);

@@ -145,3 +145,10 @@ Preferred communication style: Simple, everyday language.
 - **Frontend:** Serving directly from source with both Google Drive and Microsoft OneDrive buttons
 - **Security:** Proper client/server separation maintained
 - **Static Resources:** Configured to serve from both classpath and file system for development
+
+### Post-Migration Fixes (July 16, 2025)
+- ✅ **Fixed Microsoft OneDrive loading popup issue** - Removed persistent loading text from modal
+- ✅ **Fixed file icons displaying as text** - Updated getFileIcon() to return proper HTML instead of CSS classes
+- ✅ **Added SharePoint API endpoints** - Created /api/microsoft/sites and /api/microsoft/sites/{id}/files endpoints
+- ✅ **Enhanced error handling** - Added retry buttons and better error messages for both OneDrive and SharePoint
+- ✅ **Improved loading states** - Proper loading spinner management without overlapping content
