@@ -9,8 +9,12 @@ import com.example.googledrive.service.MicrosoftTokenService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -81,6 +85,39 @@ public class MicrosoftAuthController {
         }
     }
 
+    @GetMapping("/files")
+    public ResponseEntity<?> getUserFiles(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        try {
+            String accessToken = microsoftTokenService.getValidAccessToken(userOpt.get());
+            
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                "https://graph.microsoft.com/v1.0/me/drive/root/children",
+                HttpMethod.GET,
+                entity,
+                Map.class
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch files: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/files/save")
     public ResponseEntity<Map<String, String>> saveFileMetadata(
             @RequestBody Map<String, Object> fileMetadata,
@@ -102,6 +139,39 @@ public class MicrosoftAuthController {
             return ResponseEntity.ok(Map.of("message", "File metadata saved successfully"));
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "Failed to save file metadata"));
+        }
+    }
+
+    @GetMapping("/files/{fileId}/download")
+    public ResponseEntity<?> downloadFile(@PathVariable String fileId, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        try {
+            String accessToken = microsoftTokenService.getValidAccessToken(userOpt.get());
+            
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                "https://graph.microsoft.com/v1.0/me/drive/items/" + fileId + "/content",
+                HttpMethod.GET,
+                entity,
+                Map.class
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to download file: " + e.getMessage()));
         }
     }
 

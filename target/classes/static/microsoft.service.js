@@ -114,16 +114,54 @@ class MicrosoftService {
 
     async openMicrosoftPicker() {
         try {
+            // Get access token from backend
+            const tokenResponse = await fetch('/api/microsoft/token', {
+                credentials: 'include'
+            });
+            
+            if (!tokenResponse.ok) {
+                throw new Error('Failed to get Microsoft access token');
+            }
+            
+            const tokenData = await tokenResponse.json();
+            this.accessToken = tokenData.accessToken;
+            
             // Show file picker modal
             this.showFilePickerModal();
             
-            // Load files from OneDrive
-            const files = await this.getUserFiles();
+            // Load files from OneDrive using Graph API directly
+            const files = await this.loadOneDriveFiles();
             this.displayFilesInPicker(files);
             
         } catch (error) {
             console.error('Error opening Microsoft picker:', error);
             throw error;
+        }
+    }
+
+    async loadOneDriveFiles() {
+        try {
+            if (!this.accessToken) {
+                throw new Error('No access token available');
+            }
+            
+            const response = await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children', {
+                headers: {
+                    'Authorization': `Bearer ${this.accessToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch OneDrive files');
+            }
+            
+            const data = await response.json();
+            return data.value || [];
+        } catch (error) {
+            console.error('Error loading OneDrive files:', error);
+            // Fallback to backend API
+            return await this.getUserFiles();
         }
     }
 
