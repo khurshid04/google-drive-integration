@@ -14,17 +14,21 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Spring Boot Server"
+args = "Spring Boot Dev Server"
 
 [[workflows.workflow]]
-name = "Spring Boot Server"
+name = "Spring Boot Dev Server"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "java -jar -Dserver.port=5000 target/google-drive-integration-0.0.1-SNAPSHOT.jar"
+args = "mvn spring-boot:run -Dspring-boot.run.args=\"--server.port=5000\""
 waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 5000
+
+[[ports]]
+localPort = 35729
+externalPort = 80
