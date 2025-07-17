@@ -152,3 +152,10 @@ Preferred communication style: Simple, everyday language.
 - ✅ **Added SharePoint API endpoints** - Created /api/microsoft/sites and /api/microsoft/sites/{id}/files endpoints
 - ✅ **Enhanced error handling** - Added retry buttons and better error messages for both OneDrive and SharePoint
 - ✅ **Improved loading states** - Proper loading spinner management without overlapping content
+
+### Latest Fixes (July 17, 2025)
+- ✅ **Fixed double popup issue** - Removed duplicate loading states in Microsoft OneDrive picker
+- ✅ **Added granular logout functionality** - Separate logout buttons for Google Drive, Microsoft OneDrive, and logout all
+- ✅ **Implemented automatic token refresh** - Added /api/microsoft/auth/refresh endpoint with retry logic
+- ✅ **Enhanced authentication persistence** - System now remembers login state and refreshes tokens automatically
+- ✅ **Improved user experience** - Better error handling when users are not authenticated before accessing pickers

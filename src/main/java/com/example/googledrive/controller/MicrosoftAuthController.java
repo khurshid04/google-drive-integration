@@ -241,6 +241,58 @@ public class MicrosoftAuthController {
         }
     }
 
+    @PostMapping("/auth/refresh")
+    public ResponseEntity<TokenResponseDto> refreshAccessToken(HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).build();
+        }
+
+        try {
+            // Get the existing token first
+            Optional<UserToken> tokenOpt = microsoftTokenService.getTokenByUser(userOpt.get());
+            
+            if (tokenOpt.isEmpty()) {
+                return ResponseEntity.status(404).build();
+            }
+            
+            UserToken userToken = tokenOpt.get();
+            
+            // Refresh the access token
+            microsoftTokenService.refreshAccessToken(userToken);
+            
+            // Get the updated token
+            Optional<UserToken> updatedTokenOpt = microsoftTokenService.getTokenByUser(userOpt.get());
+            if (updatedTokenOpt.isPresent()) {
+                UserToken updatedToken = updatedTokenOpt.get();
+                long expiresIn = java.time.Duration.between(
+                    java.time.LocalDateTime.now(), 
+                    updatedToken.getExpiresAt()
+                ).getSeconds();
+                
+                TokenResponseDto response = new TokenResponseDto(
+                    updatedToken.getAccessToken(), 
+                    null, // Don't expose refresh token to frontend
+                    expiresIn,
+                    "Bearer",
+                    updatedToken.getExpiresAt()
+                );
+                
+                return ResponseEntity.ok(response);
+            }
+            
+            return ResponseEntity.status(500).build();
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(HttpSession session) {
         Long userId = (Long) session.getAttribute("userId");
