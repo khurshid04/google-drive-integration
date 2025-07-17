@@ -125,15 +125,32 @@ class App {
     async updateUI() {
         const user = this.authService.getCurrentUser();
         
-        if (user && this.authService.isConnected()) {
+        // Check if user is authenticated with either Google Drive or Microsoft OneDrive
+        const isGoogleAuthenticated = user && this.authService.isConnected();
+        const isMicrosoftAuthenticated = await this.checkMicrosoftAuth();
+
+        if (isGoogleAuthenticated || isMicrosoftAuthenticated) {
             // Show main section
             document.getElementById('authSection').style.display = 'none';
             document.getElementById('mainSection').style.display = 'block';
-            
+
             // Update user info
             document.getElementById('userInfo').style.display = 'block';
-            document.getElementById('userName').textContent = user.name;
-            
+            if (user) {
+                document.getElementById('userName').textContent = user.name;
+            } else if (isMicrosoftAuthenticated) {
+                // Get Microsoft user info if Google user is not available
+                try {
+                    const response = await fetch('/api/auth/user', { credentials: 'include' });
+                    if (response.ok) {
+                        const msUser = await response.json();
+                        document.getElementById('userName').textContent = msUser.name || 'Microsoft User';
+                    }
+                } catch (error) {
+                    document.getElementById('userName').textContent = 'User';
+                }
+            }
+
             // Load files
             await this.loadFiles();
             await this.loadSavedFiles();
@@ -142,6 +159,17 @@ class App {
             document.getElementById('authSection').style.display = 'block';
             document.getElementById('mainSection').style.display = 'none';
             document.getElementById('userInfo').style.display = 'none';
+        }
+    }
+
+    async checkMicrosoftAuth() {
+        try {
+            const response = await fetch('/api/microsoft/token', {
+                credentials: 'include'
+            });
+            return response.ok;
+        } catch (error) {
+            return false;
         }
     }
 
