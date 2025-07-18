@@ -6,6 +6,7 @@ class MicrosoftService {
         this.accessToken = null;
         this.currentPath = '/';
         this.currentView = 'onedrive'; // 'onedrive' or 'sharepoint'
+        this.isPickerOpen = false; // Track if picker is already open
         window.microsoftService = this; // Make globally accessible
     }
 
@@ -149,7 +150,15 @@ class MicrosoftService {
     }
 
     async openMicrosoftPicker() {
+        // Prevent multiple pickers from opening simultaneously
+        if (this.isPickerOpen) {
+            console.log('Microsoft picker is already open, ignoring duplicate request');
+            return;
+        }
+
         try {
+            this.isPickerOpen = true;
+
             // Check if user is already authenticated, if not prompt to connect
             const authCheckResponse = await fetch('/api/microsoft/token', {
                 credentials: 'include'
@@ -189,6 +198,8 @@ class MicrosoftService {
         } catch (error) {
             console.error('Error opening Microsoft picker:', error);
             throw error;
+        } finally {
+            this.isPickerOpen = false;
         }
     }
 
@@ -274,7 +285,12 @@ class MicrosoftService {
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('microsoftPickerModal'));
         modal.show();
-        
+
+        // Reset picker flag when modal is closed
+        document.getElementById('microsoftPickerModal').addEventListener('hidden.bs.modal', () => {
+            this.isPickerOpen = false;
+        });
+
         // Set up select button handler
         document.getElementById('selectMicrosoftFilesBtn').addEventListener('click', () => {
             this.handleFileSelection();
@@ -309,8 +325,8 @@ class MicrosoftService {
             
             return `
                 <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card file-card ${isFolder ? 'folder-card' : ''}" 
-                         data-file-id="${file.id}" 
+                    <div class="card file-card ${isFolder ? 'folder-card' : ''}"
+                         data-file-id="${file.id}"
                          data-file-type="${isFolder ? 'folder' : 'file'}"
                          ${isFolder ? `onclick="window.microsoftService.navigateToFolder('${file.id}', '${file.name}')"` : ''}>
                         <div class="card-body text-center">
@@ -325,7 +341,7 @@ class MicrosoftService {
                             </small>
                             ${!isFolder ? `
                                 <div class="form-check mt-2">
-                                    <input class="form-check-input file-checkbox" type="checkbox" 
+                                    <input class="form-check-input file-checkbox" type="checkbox"
                                            data-file='${JSON.stringify(file)}' id="file-${file.id}">
                                     <label class="form-check-label" for="file-${file.id}">
                                         Select

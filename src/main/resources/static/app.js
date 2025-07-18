@@ -224,12 +224,15 @@ class App {
                 // Auto-open Microsoft picker after successful connection
                 setTimeout(async () => {
                     try {
-                        await this.openMicrosoftPicker();
+                        // Only open picker if not already open
+                        if (!this.microsoftService.isPickerOpen) {
+                            await this.microsoftService.openMicrosoftPicker();
+                        }
                     } catch (error) {
                         console.error('Failed to open picker after authentication:', error);
                         this.showError('Please try clicking "Select Files from OneDrive" button manually.');
                     }
-                }, 2000);
+                }, 1500); // Shorter delay to prevent user confusion
             }
         } catch (error) {
             console.error('Failed to connect:', error);
