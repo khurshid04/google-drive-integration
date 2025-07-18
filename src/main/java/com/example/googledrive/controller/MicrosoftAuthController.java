@@ -63,16 +63,16 @@ public class MicrosoftAuthController {
             if (tokenOpt.isPresent()) {
                 UserToken userToken = tokenOpt.get();
                 long expiresIn = java.time.Duration.between(
-                    java.time.LocalDateTime.now(), 
-                    userToken.getExpiresAt()
+                        java.time.LocalDateTime.now(),
+                        userToken.getExpiresAt()
                 ).getSeconds();
                 
                 TokenResponseDto response = new TokenResponseDto(
-                    accessToken, 
-                    null, // Don't expose refresh token to frontend
-                    expiresIn,
-                    "Bearer",
-                    userToken.getExpiresAt()
+                        accessToken,
+                        null, // Don't expose refresh token to frontend
+                        expiresIn,
+                        "Bearer",
+                        userToken.getExpiresAt()
                 );
                 
                 return ResponseEntity.ok(response);
@@ -106,10 +106,10 @@ public class MicrosoftAuthController {
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
             ResponseEntity<Map> response = restTemplate.exchange(
-                "https://graph.microsoft.com/v1.0/me/drive/root/children",
-                HttpMethod.GET,
-                entity,
-                Map.class
+                    "https://graph.microsoft.com/v1.0/me/drive/root/children",
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
             );
             
             return ResponseEntity.ok(response.getBody());
@@ -163,10 +163,10 @@ public class MicrosoftAuthController {
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
             ResponseEntity<Map> response = restTemplate.exchange(
-                "https://graph.microsoft.com/v1.0/me/drive/items/" + fileId + "/content",
-                HttpMethod.GET,
-                entity,
-                Map.class
+                    "https://graph.microsoft.com/v1.0/me/drive/items/" + fileId + "/content",
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
             );
             
             return ResponseEntity.ok(response.getBody());
@@ -196,10 +196,10 @@ public class MicrosoftAuthController {
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
             ResponseEntity<Map> response = restTemplate.exchange(
-                "https://graph.microsoft.com/v1.0/sites?search=*",
-                HttpMethod.GET,
-                entity,
-                Map.class
+                    "https://graph.microsoft.com/v1.0/sites?search=*",
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
             );
             
             return ResponseEntity.ok(response.getBody());
@@ -229,15 +229,48 @@ public class MicrosoftAuthController {
             HttpEntity<String> entity = new HttpEntity<>(headers);
             
             ResponseEntity<Map> response = restTemplate.exchange(
-                "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drive/root/children",
-                HttpMethod.GET,
-                entity,
-                Map.class
+                    "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drive/root/children",
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
             );
             
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch SharePoint site files: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/sites/{siteId}/folders/{folderId}/children")
+    public ResponseEntity<?> getSharePointFolderContents(@PathVariable String siteId, @PathVariable String folderId, HttpSession session) {
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Not authenticated"));
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "User not found"));
+        }
+
+        try {
+            String accessToken = microsoftTokenService.getValidAccessToken(userOpt.get());
+
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    "https://graph.microsoft.com/v1.0/sites/" + siteId + "/drive/items/" + folderId + "/children",
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
+            );
+
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to fetch SharePoint folder contents: " + e.getMessage()));
         }
     }
 
@@ -271,16 +304,16 @@ public class MicrosoftAuthController {
             if (updatedTokenOpt.isPresent()) {
                 UserToken updatedToken = updatedTokenOpt.get();
                 long expiresIn = java.time.Duration.between(
-                    java.time.LocalDateTime.now(), 
-                    updatedToken.getExpiresAt()
+                        java.time.LocalDateTime.now(),
+                        updatedToken.getExpiresAt()
                 ).getSeconds();
                 
                 TokenResponseDto response = new TokenResponseDto(
-                    updatedToken.getAccessToken(), 
-                    null, // Don't expose refresh token to frontend
-                    expiresIn,
-                    "Bearer",
-                    updatedToken.getExpiresAt()
+                        updatedToken.getAccessToken(),
+                        null, // Don't expose refresh token to frontend
+                        expiresIn,
+                        "Bearer",
+                        updatedToken.getExpiresAt()
                 );
                 
                 return ResponseEntity.ok(response);

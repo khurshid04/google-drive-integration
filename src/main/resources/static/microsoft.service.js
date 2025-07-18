@@ -6,6 +6,7 @@ class MicrosoftService {
         this.accessToken = null;
         this.currentPath = '/';
         this.currentView = 'onedrive'; // 'onedrive' or 'sharepoint'
+        this.currentSiteId = null; // Track current SharePoint site
         this.isPickerOpen = false; // Track if picker is already open
         window.microsoftService = this; // Make globally accessible
     }
@@ -401,21 +402,30 @@ class MicrosoftService {
                     <p class="mt-2">Loading folder contents...</p>
                 </div>
             `;
-            
-            const response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, {
-                headers: {
-                    'Authorization': `Bearer ${this.accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
+
+            let response;
+            if (this.currentView === 'sharepoint' && this.currentSiteId) {
+                // For SharePoint, use the backend API which handles proper folder navigation
+                response = await fetch(`/api/microsoft/sites/${this.currentSiteId}/folders/${folderId}/children`, {
+                    credentials: 'include'
+                });
+            } else {
+                // For OneDrive, use the direct Graph API
+                response = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children`, {
+                    headers: {
+                        'Authorization': `Bearer ${this.accessToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+
             if (!response.ok) {
                 throw new Error('Failed to load folder contents');
             }
             
             const data = await response.json();
             this.currentPath = this.currentPath + '/' + folderName;
-            this.displayFilesInPicker(data.value || [], this.currentPath);
+            this.displayFilesInPicker(data.value || data, this.currentPath);
         } catch (error) {
             console.error('Error navigating to folder:', error);
             if (window.app && window.app.showError) {
