@@ -140,6 +140,64 @@ public class MicrosoftTokenService {
         }
     }
 
+    public String getSharePointToken(User user, java.util.List<String> scopes) throws Exception {
+        Optional<UserToken> tokenOpt = userTokenRepository.findByUserAndProvider(user, TokenProvider.MICROSOFT);
+
+        if (tokenOpt.isEmpty()) {
+            throw new RuntimeException("No Microsoft tokens found for user");
+        }
+
+        UserToken userToken = tokenOpt.get();
+
+        // Make sure we have a valid refresh token
+        if (userToken.getRefreshToken() == null) {
+            throw new RuntimeException("No refresh token available for SharePoint token exchange");
+        }
+
+        RestTemplate restTemplate = new RestTemplate();
+
+        // Prepare request headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        // Prepare request body for SharePoint-specific token
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "refresh_token");
+        body.add("refresh_token", userToken.getRefreshToken());
+        body.add("client_id", microsoftClientId);
+        body.add("client_secret", microsoftClientSecret);
+        body.add("scope", String.join(" ", scopes)); // Use SharePoint-specific scopes
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+
+        try {
+            String response = restTemplate.postForObject(MICROSOFT_TOKEN_URL, request, String.class);
+
+            // Parse response
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode responseNode = mapper.readTree(response);
+
+            if (responseNode.has("access_token")) {
+                String sharePointToken = responseNode.get("access_token").asText();
+                System.out.println("Successfully obtained SharePoint token for scopes: " + String.join(", ", scopes));
+                return sharePointToken;
+            } else if (responseNode.has("error")) {
+                String error = responseNode.get("error").asText();
+                String errorDescription = responseNode.has("error_description") ?
+                        responseNode.get("error_description").asText() : "No description provided";
+                throw new RuntimeException("SharePoint token request failed: " + error + " - " + errorDescription);
+            } else {
+                throw new RuntimeException("Unexpected response format when requesting SharePoint token");
+            }
+
+        } catch (Exception e) {
+            System.err.println("Failed to get SharePoint token: " + e.getMessage());
+            // Fallback: return the main access token if SharePoint-specific token fails
+            System.out.println("Falling back to main access token");
+            return getValidAccessToken(user);
+        }
+    }
+
     public void deleteTokens(User user) {
         Optional<UserToken> tokenOpt = userTokenRepository.findByUserAndProvider(user, TokenProvider.MICROSOFT);
         tokenOpt.ifPresent(userTokenRepository::delete);
