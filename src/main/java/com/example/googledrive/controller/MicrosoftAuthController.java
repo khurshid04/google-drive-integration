@@ -118,6 +118,57 @@ public class MicrosoftAuthController {
         }
     }
 
+
+    @PostMapping("/sharepoint-token")
+    public ResponseEntity<TokenResponseDto> getSharePointToken(
+            @RequestBody Map<String, Object> request,
+            HttpSession session) {
+
+        Long userId = (Long) session.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(401).build();
+        }
+
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).build();
+        }
+
+        try {
+            User user = userOpt.get();
+            java.util.List<String> scopes = (java.util.List<String>) request.get("scopes");
+
+            if (scopes == null || scopes.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Get SharePoint-specific token using the requested scopes
+            String sharePointToken = microsoftTokenService.getSharePointToken(user, scopes);
+
+            if (sharePointToken != null) {
+                // Create token response (expires in 1 hour by default for SharePoint tokens)
+                long expiresIn = 3600; // 1 hour in seconds
+                LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(expiresIn);
+
+                TokenResponseDto response = new TokenResponseDto(
+                        sharePointToken,
+                        null, // No refresh token for SharePoint-specific tokens
+                        expiresIn,
+                        "Bearer",
+                        expiresAt
+                );
+
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.status(500).build();
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error getting SharePoint token: " + e.getMessage());
+            return ResponseEntity.status(500).build();
+        }
+    }
+
     @PostMapping("/files/save")
     public ResponseEntity<Map<String, String>> saveFileMetadata(
             @RequestBody Map<String, Object> fileMetadata,
