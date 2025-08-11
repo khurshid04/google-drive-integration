@@ -34,12 +34,15 @@ public class MicrosoftTokenService {
     @Value("${microsoft.redirect.uri}")
     private String microsoftRedirectUri;
 
-    private static final String MICROSOFT_AUTH_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
-    private static final String MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-    private static final String SCOPES = "https://graph.microsoft.com/Files.ReadWrite.All https://graph.microsoft.com/Sites.ReadWrite.All offline_access";
+    @Value("${microsoft.auth.endpoint}")
+    private String microsoftAuthUrl;
+
+    @Value("${microsoft.token.endpoint}")
+    private String microsoftTokenUrl;
+    private static final String SCOPES =  "https://graph.microsoft.com/User.Read https://graph.microsoft.com/Files.ReadWrite.All https://graph.microsoft.com/Sites.ReadWrite.All offline_access";
 
     public String getAuthorizationUrl() {
-        return MICROSOFT_AUTH_URL + 
+        return microsoftAuthUrl + 
                "?client_id=" + microsoftClientId +
                "&response_type=code" +
                "&redirect_uri=" + microsoftRedirectUri +
@@ -116,7 +119,7 @@ public class MicrosoftTokenService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
         
         try {
-            String response = restTemplate.postForObject(MICROSOFT_TOKEN_URL, request, String.class);
+            String response = restTemplate.postForObject(microsoftTokenUrl, request, String.class);
             
             // Parse response
             ObjectMapper mapper = new ObjectMapper();
@@ -171,7 +174,7 @@ public class MicrosoftTokenService {
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 
         try {
-            String response = restTemplate.postForObject(MICROSOFT_TOKEN_URL, request, String.class);
+            String response = restTemplate.postForObject(microsoftTokenUrl, request, String.class);
 
             // Parse response
             ObjectMapper mapper = new ObjectMapper();

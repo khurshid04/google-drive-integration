@@ -40,11 +40,14 @@ public class MicrosoftOAuth2Controller {
     @Value("${microsoft.redirect.uri}")
     private String microsoftRedirectUri;
 
-    private static final String MICROSOFT_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+    @Value("${microsoft.token.endpoint}")
+    private String microsoftTokenUrl;
     private static final String MICROSOFT_USER_INFO_URL = "https://graph.microsoft.com/v1.0/me";
 
     @GetMapping("/callback")
     public ResponseEntity<String> handleCallback(@RequestParam("code") String code, HttpSession session) {
+        System.out.println("Microsoft OAuth callback received with code: " + code.substring(0, 20) + "...");
+        
         try {
             // Exchange code for access token
             RestTemplate restTemplate = new RestTemplate();
@@ -61,7 +64,11 @@ public class MicrosoftOAuth2Controller {
             
             HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
             
-            ResponseEntity<String> response = restTemplate.postForEntity(MICROSOFT_TOKEN_URL, request, String.class);
+            System.out.println("Exchanging code for token with endpoint: " + microsoftTokenUrl);
+            ResponseEntity<String> response = restTemplate.postForEntity(microsoftTokenUrl, request, String.class);
+            
+            System.out.println("Token exchange response status: " + response.getStatusCode());
+            System.out.println("Token exchange response body: " + response.getBody());
             
             if (response.getStatusCode() == HttpStatus.OK) {
                 ObjectMapper mapper = new ObjectMapper();
@@ -76,6 +83,9 @@ public class MicrosoftOAuth2Controller {
                 userHeaders.setBearerAuth(accessToken);
                 HttpEntity<String> userRequest = new HttpEntity<>(userHeaders);
                 
+                System.out.println("Fetching user info from: " + MICROSOFT_USER_INFO_URL);
+                System.out.println("Using access token: " + accessToken.substring(0, 20) + "...");
+                
                 ResponseEntity<String> userResponse = restTemplate.exchange(
                     MICROSOFT_USER_INFO_URL,
                     org.springframework.http.HttpMethod.GET,
@@ -83,10 +93,16 @@ public class MicrosoftOAuth2Controller {
                     String.class
                 );
                 
+                System.out.println("User info response status: " + userResponse.getStatusCode());
+                System.out.println("User info response body: " + userResponse.getBody());
+                
                 if (userResponse.getStatusCode() == HttpStatus.OK) {
                     JsonNode userInfo = mapper.readTree(userResponse.getBody());
                     
-                    String email = userInfo.get("mail").asText();
+                    // Handle both personal and work accounts - personal accounts may not have "mail" field
+                    String email = userInfo.has("mail") && !userInfo.get("mail").isNull() 
+                        ? userInfo.get("mail").asText() 
+                        : userInfo.get("userPrincipalName").asText();
                     String name = userInfo.get("displayName").asText();
                     String oneDriveId = userInfo.get("id").asText();
                     
@@ -140,6 +156,8 @@ public class MicrosoftOAuth2Controller {
                 .body("Failed to authenticate with Microsoft");
                 
         } catch (Exception e) {
+            System.err.println("Error processing Microsoft authorization: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Failed to process Microsoft authorization: " + e.getMessage());
         }
